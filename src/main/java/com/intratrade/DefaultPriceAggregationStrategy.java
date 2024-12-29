@@ -6,27 +6,22 @@ import java.util.Collection;
 class DefaultPriceAggregationStrategy implements IPriceAggregationStrategy {
     @Override
     public BigDecimal calculateVwap(Collection<PriceLevel> levels, long targetQuantity) {
-        record VwapAccumulator(BigDecimal sumProduct, long remainingQuantity) {}
+        BigDecimal sumProduct = BigDecimal.ZERO;
+        long remainingQuantity = targetQuantity;
 
-        var result = levels.stream()
-                .reduce(
-                        new VwapAccumulator(BigDecimal.ZERO, targetQuantity),
-                        (acc, level) -> {
-                            if (acc.remainingQuantity <= 0) return acc;
-                            var quantityToUse = Math.min(acc.remainingQuantity, level.quantity());
-                            return new VwapAccumulator(
-                                    acc.sumProduct.add(level.price().multiply(BigDecimal.valueOf(quantityToUse))),
-                                    acc.remainingQuantity - quantityToUse
-                            );
-                        },
-                        (a, b) -> a
-                );
+        for (PriceLevel level : levels) {
+            long quantityToUse = Math.min(remainingQuantity, level.quantity());
+            if (quantityToUse <= 0) break;
 
-        if (result.remainingQuantity > 0) {
+            sumProduct = sumProduct.add(level.price().multiply(BigDecimal.valueOf(quantityToUse)));
+            remainingQuantity -= quantityToUse;
+        }
+
+        if (remainingQuantity > 0) {
             throw new IllegalArgumentException("Insufficient quantity for VWAP calculation");
         }
 
-        return result.sumProduct.divide(BigDecimal.valueOf(targetQuantity), 4, java.math.RoundingMode.HALF_UP);
+        return sumProduct.divide(BigDecimal.valueOf(targetQuantity), 4, java.math.RoundingMode.HALF_UP);
     }
 
     @Override

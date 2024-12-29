@@ -1,3 +1,3 @@
 package com.intratrade;
 
-enum Side { BUY, SELL }
+public enum Side { BUY, SELL }
